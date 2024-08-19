@@ -7,3 +7,5 @@ yarn.lock
 Chromium.app
 
 .DS_Store
+.vscode
+.husky

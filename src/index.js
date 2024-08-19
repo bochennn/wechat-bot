@@ -37,6 +37,8 @@ function onLogin(user) {
 // 登出
 function onLogout(user) {
   console.log(`${user} has logged out`)
+  bot.stop()
+  process.exit()
 }
 
 // 收到好友请求
@@ -59,7 +61,21 @@ async function onMessage(msg) {
   // 默认消息回复
   await defaultMessage(msg, bot, serviceType)
   // 消息分片
-  // await shardingMessage(msg,bot)
+  // await shardingMessage(msg, bot)
+}
+
+async function onError(message) {
+
+  if (message.code === 2) {
+    console.log('Known GError', message.details)
+  } else {
+    console.log('❌ bot error handle code: ', message)
+  }
+
+  // if (fs.existsSync('WechatEveryDay.memory-card.json')) {
+  //   fs.unlinkSync('WechatEveryDay.memory-card.json')
+  // }
+
 }
 
 // 初始化机器人
@@ -84,19 +100,9 @@ bot.on('logout', onLogout)
 // 收到消息
 bot.on('message', onMessage)
 // 添加好友
-bot.on('friendship', onFriendShip)
+// bot.on('friendship', onFriendShip)
 // 错误
-bot.on('error', (e) => {
-  console.error('❌ bot error handle: ', e)
-  // console.log('❌ 程序退出,请重新运行程序')
-  // bot.stop()
-
-  // // 如果 WechatEveryDay.memory-card.json 文件存在，删除
-  // if (fs.existsSync('WechatEveryDay.memory-card.json')) {
-  //   fs.unlinkSync('WechatEveryDay.memory-card.json')
-  // }
-  // process.exit()
-})
+bot.on('error', onError)
 
 // 启动微信机器人
 function botStart() {
@@ -116,6 +122,8 @@ process.on('uncaughtException', (err) => {
   //   fs.unlinkSync('WechatEveryDay.memory-card.json')
   // }
 })
+
+// AggregateError
 
 // 控制启动
 function handleStart(type) {
