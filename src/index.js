@@ -8,6 +8,7 @@ import fs from 'fs'
 import path, { dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { defaultMessage } from './wechaty/sendMessage.js'
+import { terminal } from './interface/input.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -43,12 +44,12 @@ function onLogout(user) {
 
 // 收到好友请求
 async function onFriendShip(friendship) {
-  const frienddShipRe = /chatgpt|chat/
-  if (friendship.type() === 2) {
-    if (frienddShipRe.test(friendship.hello())) {
-      await friendship.accept()
-    }
-  }
+  // const frienddShipRe = /chatgpt|chat/
+  // if (friendship.type() === 2) {
+  //   if (frienddShipRe.test(friendship.hello())) {
+  //     await friendship.accept()
+  //   }
+  // }
 }
 
 /**
@@ -66,6 +67,7 @@ async function onMessage(msg) {
 
 async function onError(message) {
 
+  // AggregateError
   if (message.code === 2) {
     console.log('Known GError', message.details)
   } else {
@@ -100,7 +102,7 @@ bot.on('logout', onLogout)
 // 收到消息
 bot.on('message', onMessage)
 // 添加好友
-// bot.on('friendship', onFriendShip)
+bot.on('friendship', onFriendShip)
 // 错误
 bot.on('error', onError)
 
@@ -122,8 +124,6 @@ process.on('uncaughtException', (err) => {
   //   fs.unlinkSync('WechatEveryDay.memory-card.json')
   // }
 })
-
-// AggregateError
 
 // 控制启动
 function handleStart(type) {

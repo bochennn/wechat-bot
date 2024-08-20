@@ -3,6 +3,8 @@ import dotenv from 'dotenv'
 dotenv.config()
 const env = dotenv.config().parsed // 环境参数
 
+import { getServe } from './serve.js'
+
 // 从环境变量中导入机器人的名称
 const botName = env.BOT_NAME
 
@@ -15,7 +17,13 @@ const senderWhiteList = env.ALIAS_WHITELIST ? env.ALIAS_WHITELIST.split(',') : [
 // 从环境变量中导入群聊白名单
 const groupWhiteList = env.ROOM_WHITELIST ? env.ROOM_WHITELIST.split(',') : []
 
-import { getServe } from './serve.js'
+let messageQueue = []
+
+async function waitSeconds(seconds, value = null) {
+  return new Promise((resolve) => {
+      setTimeout(() => {resolve(value)}, seconds * 1000);
+  });
+}
 
 /**
  * 默认消息发送
@@ -28,7 +36,9 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   // const getReply = getServe(ServiceType)
   const sender = msg.talker()
   // const receiver = msg.to()
-  const content = msg.text() // 消息内容
+  const content = msg.text()
+  // message type: wechaty-puppet/src/schemas/message.ts
+  const isText = msg.type() === bot.Message.Type.Text
 
   const senderName = await sender.name() || null // wechat name
   const groupName = (await msg.room()?.topic()) || null
@@ -36,17 +46,47 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   const isBotSelf = botName === senderName
   const inWhiteList = senderWhiteList.includes(senderName) ||
     (groupWhiteList.includes(groupName) && content.includes(`${botName}`))
-  const replySender = !isBotSelf && inWhiteList
+  const replySender = !isBotSelf && isText && inWhiteList
 
-  if (!replySender) return
-  try {
-    // message type: wechaty-puppet/src/schemas/message.ts
-    if (msg.type() === bot.Message.Type.Text) {
-      console.log('Sender', senderName)
-      // const response = await getReply(content)
-      // setTimeout(() => console.log('sleep 10s'), 10000);
-      console.log('Text Message', content)
+  if (!replySender)
+    return
+
+  console.log(`${senderName}> ${content}`)
+  messageQueue.push(content)
+  if (messageQueue.length > 1)
+    return
+
+  let curAttempt = 0, lastAttempt = 0
+  let lastMessage = null
+
+  while (messageQueue.length > 0) {
+    const top_msg = messageQueue[0]
+
+    if (curAttempt > 0 && curAttempt === lastAttempt && lastMessage === top_msg) {
+      await waitSeconds(1)
+      continue
     }
+
+    const result = await waitSeconds(3, Math.random() > 0.5)
+    lastMessage = top_msg
+
+    if (result) {
+      console.log('message processed', top_msg)
+      await sender.say(`response ${top_msg}`)
+
+      messageQueue.shift()
+      curAttempt = 0
+    } else {
+      console.log('failed', curAttempt, 'retry message', top_msg)
+      lastAttempt = curAttempt++
+    }
+  }
+
+  // try {
+      // console.log('Sender', senderName)
+      // const response = await getReply(content)
+      // console.log('Text Message', content)
+    // }
     // 区分群聊和私聊
     // if (isRoom && room) {
     //   const question = (await msg.mentionText()) || content.replace(`${botName}`, '') // 去掉艾特的消息主体
@@ -60,9 +100,9 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
     //   const response = await getReply(content)
     //   await contact.say(response)
     // }
-  } catch (e) {
-    console.error(e)
-  }
+  // } catch (e) {
+  //   console.error(e)
+  // }
 }
 
 /**
